@@ -1,6 +1,7 @@
 edit:
-	cd stockfish && $(MAKE) build ARCH=$(ARCH)
-	cd cutechess/gui && $(MAKE)
+	cd stockfish && $(MAKE)
+	cd cutechess && qmake
+	cd cutechess && make
 
 clean:
 	cd stockfish && $(MAKE) clean
