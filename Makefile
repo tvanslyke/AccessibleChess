@@ -1,6 +1,8 @@
 edit:
 	cd stockfish && $(MAKE)
 	cd cutechess && qmake
+	cd cutechess/gui && qmake
+	cd cutechess/lib && qmake
 	cd cutechess && make
 
 clean:
