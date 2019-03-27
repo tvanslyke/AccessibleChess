@@ -1,5 +1,5 @@
 edit:
-	cd stockfish && $(MAKE)
+	cd stockfish && $(MAKE) build ARCH=$(ARCH)
 	cd cutechess && qmake
 	cd cutechess/gui && qmake
 	cd cutechess/lib && qmake
