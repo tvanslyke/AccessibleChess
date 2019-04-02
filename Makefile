@@ -3,7 +3,7 @@ edit:
 	cd cutechess && qmake
 	cd cutechess/gui && qmake
 	cd cutechess/lib && qmake
-	cd cutechess && make
+	cd cutechess && $(MAKE)
 
 clean:
 	cd stockfish && $(MAKE) clean
