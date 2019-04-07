@@ -372,3 +372,4 @@ void GameViewer::onMoveMade(const Chess::GenericMove& move)
 	if (m_moveIndex == m_moves.count() - 1)
 		viewNextMove();
 }
+

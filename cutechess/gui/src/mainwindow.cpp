@@ -60,6 +60,7 @@
 #ifdef QT_DEBUG
 #include <modeltest.h>
 #endif
+#include <iostream>
 
 MainWindow::TabData::TabData(ChessGame* game, Tournament* tournament)
 	: m_id(game),
@@ -129,6 +130,10 @@ MainWindow::MainWindow(ChessGame* game)
 
 MainWindow::~MainWindow()
 {
+}
+
+ChessGame* MainWindow::game() const {
+	return m_game;
 }
 
 void MainWindow::createActions()
@@ -268,6 +273,18 @@ void MainWindow::createActions()
 		app, SLOT(showGameWall()));
 
 	connect(m_aboutAct, SIGNAL(triggered()), this, SLOT(showAboutDialog()));
+}
+
+void MainWindow::connectVoiceAssistant(VoiceAssistant* va) {
+	connect(va, &VoiceAssistant::saveGame, this, &MainWindow::save);
+	connect(va, &VoiceAssistant::resignGame, this, &MainWindow::resignGame);
+	connect(va, &VoiceAssistant::newGame, this, &MainWindow::newGame);
+}
+
+void MainWindow::disconnectVoiceAssistant(VoiceAssistant* va) {
+	disconnect(va, &VoiceAssistant::saveGame, this, &MainWindow::save);
+	disconnect(va, &VoiceAssistant::resignGame, this, &MainWindow::resignGame);
+	disconnect(va, &VoiceAssistant::newGame, this, &MainWindow::newGame);
 }
 
 void MainWindow::createMenus()
@@ -706,7 +723,8 @@ void MainWindow::closeCurrentGame()
 void MainWindow::newGame()
 {
 	EngineManager* engineManager = CuteChessApplication::instance()->engineManager();
-	NewGameDialog dlg(engineManager, this);
+	VoiceAssistant* voiceAssistant = CuteChessApplication::instance()->voiceAssistant();
+	NewGameDialog dlg(engineManager, voiceAssistant, this);
 	if (dlg.exec() != QDialog::Accepted)
 		return;
 
@@ -732,6 +750,8 @@ void MainWindow::newGame()
 		this, SLOT(addGame(ChessGame*)));
 	connect(game, SIGNAL(startFailed(ChessGame*)),
 		this, SLOT(onGameStartFailed(ChessGame*)));
+	connect(game, &ChessGame::started,
+		CuteChessApplication::instance()->voiceAssistant(), &VoiceAssistant::onGameStarted);
 	CuteChessApplication::instance()->gameManager()->newGame(game,
 		builders[Chess::Side::White], builders[Chess::Side::Black]);
 }
@@ -1000,6 +1020,9 @@ void MainWindow::pasteFen()
 	connect(game, &ChessGame::initialized, this, &MainWindow::addGame);
 	connect(game, &ChessGame::startFailed, this, &MainWindow::onGameStartFailed);
 
+	connect(game, &ChessGame::started,
+		CuteChessApplication::instance()->voiceAssistant(), &VoiceAssistant::onGameStarted);
+		
 	CuteChessApplication::instance()->gameManager()->newGame(game,
 		new HumanBuilder(CuteChessApplication::userName()),
 		new HumanBuilder(CuteChessApplication::userName()));

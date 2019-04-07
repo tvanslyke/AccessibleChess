@@ -1,4 +1,5 @@
 include(board/board.pri)
+include(python/python.pri)
 INCLUDEPATH += $$PWD
 DEPENDPATH += $$PWD
 HEADERS += $$PWD/chessengine.h \

@@ -40,10 +40,11 @@
 #include <modeltest.h>
 #endif
 
-NewGameDialog::NewGameDialog(EngineManager* engineManager, QWidget* parent)
+NewGameDialog::NewGameDialog(EngineManager* engineManager, VoiceAssistant* va, QWidget* parent)
 	: QDialog(parent),
 	  m_engineManager(engineManager),
-	  ui(new Ui::NewGameDialog)
+	  ui(new Ui::NewGameDialog),
+	  m_voiceAssistant(va)
 {
 	Q_ASSERT(engineManager != nullptr);
 	ui->setupUi(this);

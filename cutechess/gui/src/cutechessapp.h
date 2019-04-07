@@ -21,6 +21,7 @@
 
 #include <QApplication>
 #include <QPointer>
+#include "python/voiceassistant.h"
 
 class EngineManager;
 class GameManager;
@@ -48,6 +49,8 @@ class CuteChessApplication : public QApplication
 		QList<MainWindow*> gameWindows();
 		void showGameWindow(int index);
 		TournamentResultsDialog* tournamentResultsDialog();
+		VoiceAssistant* voiceAssistant();
+	
 
 		static CuteChessApplication* instance();
 		static QString userName();
@@ -74,6 +77,7 @@ class CuteChessApplication : public QApplication
 		GameDatabaseDialog* m_gameDatabaseDialog;
 		QPointer<GameWall> m_gameWall;
 		bool m_initialWindowCreated;
+		VoiceAssistant m_voiceAssistant;
 
 	private slots:
 		void onLastWindowClosed();

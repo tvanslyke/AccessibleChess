@@ -40,6 +40,7 @@
 #include "importprogressdlg.h"
 #include "pgnimporter.h"
 #include "gamewall.h"
+#include "python/voiceassistant.h"
 #ifndef Q_OS_WIN32
 #	include <sys/types.h>
 #	include <pwd.h>
@@ -55,7 +56,8 @@ CuteChessApplication::CuteChessApplication(int& argc, char* argv[])
 	  m_gameDatabaseManager(nullptr),
 	  m_gameDatabaseDialog(nullptr),
 	  m_gameWall(nullptr),
-	  m_initialWindowCreated(false)
+	  m_initialWindowCreated(false),
+	  m_voiceAssistant()
 {
 	Mersenne::initialize(QTime(0,0,0).msecsTo(QTime::currentTime()));
 
@@ -145,9 +147,10 @@ GameManager* CuteChessApplication::gameManager()
 	if (m_gameManager == nullptr)
 	{
 		m_gameManager = new GameManager(this);
-		int concurrency = QSettings()
-			.value("tournament/concurrency", 1).toInt();
-		m_gameManager->setConcurrency(concurrency);
+		// int concurrency = QSettings()
+		// 	.value("tournament/concurrency", 1).toInt();
+		// Only allow one game at a time.
+		m_gameManager->setConcurrency(1);
 	}
 
 	return m_gameManager;
@@ -171,6 +174,7 @@ MainWindow* CuteChessApplication::newGameWindow(ChessGame* game)
 	m_gameWindows.prepend(mainWindow);
 	mainWindow->show();
 	m_initialWindowCreated = true;
+	emit game->gameWindowCreated(mainWindow);
 
 	return mainWindow;
 }
@@ -187,6 +191,7 @@ void CuteChessApplication::newDefaultGame()
 
 	connect(game, SIGNAL(started(ChessGame*)),
 		this, SLOT(newGameWindow(ChessGame*)));
+	connect(game, &ChessGame::started, &m_voiceAssistant, &VoiceAssistant::onGameStarted);
 
 	gameManager()->newGame(game,
 			       new HumanBuilder(userName()),
@@ -227,6 +232,10 @@ TournamentResultsDialog*CuteChessApplication::tournamentResultsDialog()
 		m_tournamentResultsDialog = new TournamentResultsDialog();
 
 	return m_tournamentResultsDialog;
+}
+
+VoiceAssistant* CuteChessApplication::voiceAssistant() {
+	return &m_voiceAssistant;
 }
 
 void CuteChessApplication::showGameDatabaseDialog()

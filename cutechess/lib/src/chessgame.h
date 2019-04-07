@@ -29,6 +29,8 @@
 #include "timecontrol.h"
 #include "gameadjudicator.h"
 
+class MainWindow;
+
 namespace Chess { class Board; }
 class ChessPlayer;
 class OpeningBook;
@@ -105,6 +107,7 @@ class LIB_EXPORT ChessGame : public QObject
 			      Chess::Result result = Chess::Result());
 		void startFailed(ChessGame* game = nullptr);
 		void playersReady();
+		void gameWindowCreated(MainWindow* window);
 
 	private slots:
 		void startGame();
