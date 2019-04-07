@@ -27,7 +27,6 @@ public:
 
 	/** Get the board for the current game. */
 	Chess::Board* board() const;
-	GameManager* game_manager() const;
 	MainWindow* game_window() const;
 	ChessGame* game() const;
 
