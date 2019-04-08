@@ -31,18 +31,18 @@ template <class PyObjectType = PyObject>
 using pyobject_ptr = std::unique_ptr<PyObjectType, Decref>;
 
 template <class T>
-constexpr pyobject_ptr<T> copy_ref(T* pyobj) {
+pyobject_ptr<T> copy_ref(T* pyobj) {
 	Py_XINCREF(pyobj);
 	return pyobject_ptr<T>(pyobj);
 }
 
 template <class T>
-constexpr pyobject_ptr<T> copy_ref(const pyobject_ptr<T>& p) {
+pyobject_ptr<T> copy_ref(const pyobject_ptr<T>& p) {
 	return copy_ref(p.get());
 }
 
 template <class T>
-constexpr pyobject_ptr<T> acquire_ref(T* pyobj_ptr) {
+pyobject_ptr<T> acquire_ref(T* pyobj_ptr) {
 	return pyobject_ptr<T>(pyobj_ptr);
 }
 
