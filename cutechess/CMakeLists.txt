@@ -260,20 +260,16 @@ target_compile_definitions(
 	Z_PREFIX=
 	VOICE_ASSISTANT_PATH=${PROJECT_SOURCE_DIR}/../speech
 )
-if(APPLE)
-	set_target_properties(cutechess-bin PROPERTIES OUTPUT_NAME "Cute Chess")
-else()
-	set_target_properties(cutechess-bin PROPERTIES OUTPUT_NAME "cutechess")
-endif()
+set_target_properties(cutechess-bin PROPERTIES OUTPUT_NAME "cutechess")
 
 target_link_libraries(cutechess-bin
 	cutechess
-	${Qt5Core_LIBRARIES}
-	${Qt5Widgets_LIBRARIES}
-	${Qt5Svg_LIBRARIES}
-	${Qt5Concurrent_LIBRARIES}
-	${Qt5PrintSupport_LIBRARIES}
-	${Qt5Test_LIBRARIES}
+	Qt5::Core
+	Qt5::Widgets
+	Qt5::Svg
+	Qt5::Concurrent
+	Qt5::PrintSupport
+	Qt5::Test
 	${PYTHON_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 )
