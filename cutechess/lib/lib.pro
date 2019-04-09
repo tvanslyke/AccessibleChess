@@ -17,6 +17,6 @@ OBJECTS_DIR = .obj
 MOC_DIR = .moc
 RCC_DIR = .rcc
 
-LIBS += -L$$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"LIBDEST\"))\')
+LIBS += -L$$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"LIBDIR\"))\')
 LIBS += $$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"BLDLIBRARY\"))\')
 INCLUDEPATH += $$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"INCLUDEPY\"))\')
