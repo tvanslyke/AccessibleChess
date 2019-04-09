@@ -9,6 +9,10 @@ find_package(PythonLibs 3)
 if(${PYTHONLIBS_FOUND})
 else()
 	include(FindPythonAnaconda)
+	if(${PYTHONLIBS_FOUND})
+	else()
+		message( FATAL_ERROR "Could not find Python libraries." )
+	endif()
 endif()
 
 
