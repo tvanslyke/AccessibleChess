@@ -1,10 +1,17 @@
 cmake_minimum_required(VERSION 3.0)
 
+
 project(accessible_chess)
 
 set(CMAKE_C_STANDARD 99)
 set(Python3_USE_STATIC_LIBS True)
-find_package(PythonLibs 3 REQUIRED)
+find_package(PythonLibs 3)
+if(${PYTHONLIBS_FOUND})
+else()
+	include(FindPythonAnaconda)
+endif()
+
+
 find_package(Qt5 COMPONENTS Core Widgets Concurrent PrintSupport Svg Test REQUIRED)
 find_package(Threads REQUIRED)
 
