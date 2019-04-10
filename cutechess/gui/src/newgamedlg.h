@@ -22,6 +22,7 @@
 #include <QDialog>
 #include <board/side.h>
 #include <engineconfiguration.h>
+#include "python/voiceassistant.h"
 
 class ChessGame;
 class PlayerBuilder;
@@ -54,7 +55,7 @@ class NewGameDialog : public QDialog
 		 * Creates a "New Game" dialog with \a engineManager as the
 		 * source of engine configurations.
 		 */
-		NewGameDialog(EngineManager* engineManager,
+		NewGameDialog(EngineManager* engineManager, VoiceAssistant* va,
 			      QWidget* parent = nullptr);
 		/*! Destroys the dialog. */
 		virtual ~NewGameDialog();
@@ -78,6 +79,7 @@ class NewGameDialog : public QDialog
 		EngineConfigurationProxyModel* m_proxyModel;
 		EngineConfiguration m_engineConfig[2];
 		Ui::NewGameDialog* ui;
+		VoiceAssistant* m_voiceAssistant;
 };
 
 #endif // NEWGAMEDIALOG_H

@@ -42,6 +42,7 @@ class Tournament;
 class GameTabBar;
 class EvalHistory;
 class EvalWidget;
+class VoiceAssistant;
 
 /**
  * MainWindow
@@ -54,6 +55,9 @@ class MainWindow : public QMainWindow
 		explicit MainWindow(ChessGame* game);
 		virtual ~MainWindow();
 		QString windowListTitle() const;
+		ChessGame* game() const;
+		void connectVoiceAssistant(VoiceAssistant* va);
+		void disconnectVoiceAssistant(VoiceAssistant* va);
 
 	public slots:
 		void addGame(ChessGame* game);

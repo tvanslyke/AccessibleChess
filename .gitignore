@@ -1,3 +1,24 @@
 cutechess/gui/Cute\ Chess.app
+stockfish/*.o
+stockfish/syzygy/*.o
+cutechess/lib/.obj/*
+cutechess/lib/.moc/*
+cutechess/lib/.rcc/*
+cutechess/gui/.obj/*
+cutechess/gui/.moc/*
+cutechess/gui/.rcc/*
+cutechess/gui/*.h
+cutechess/gui/cutechess
+cutechess/lib/libcutechess.a
+cutechess/Makefile
+cutechess/gui/Makefile
+cutechess/lib/Makefile
+cutechess/gui/.rcc/
+accessible-chess-private-key.json
+speech/__pycache__
+.qmake.stash
 speech/*.pyc
 speech/_snowboydetect.so
+cutechess/build/*
+!cutechess/build/dummy.txt
+cutechess/cutechess

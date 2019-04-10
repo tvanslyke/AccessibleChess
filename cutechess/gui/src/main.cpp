@@ -30,8 +30,12 @@
 #include <board/result.h>
 #include <moveevaluation.h>
 
+#include "python/voiceassistant.h"
+
 int main(int argc, char* argv[])
 {
+	// CPython gets fussy if you initialize it anywhere besides the main thread.
+	VoiceAssistant::init_python_interpreter();
 	// Register types for signal / slot connections
 	qRegisterMetaType<Chess::GenericMove>("Chess::GenericMove");
 	qRegisterMetaType<Chess::Move>("Chess::Move");

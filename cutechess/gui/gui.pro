@@ -5,12 +5,10 @@ macx {
 }
 
 DESTDIR = $$PWD
-
 include(../lib/lib.pri)
 include(../lib/libexport.pri)
 
 CUTECHESS_VERSION = 1.1.0
-
 macx-xcode {
     DEFINES += CUTECHESS_VERSION=\"$$CUTECHESS_VERSION\"
 }else {
@@ -47,3 +45,7 @@ include(3rdparty/qcustomplot/qcustomplot.pri)
 CONFIG(debug, debug|release) {
     include(3rdparty/modeltest/modeltest.pri)
 }
+
+LIBS += -L$$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"LIBDIR\"))\')
+LIBS += -lpython$$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"VERSION\"))\')m
+INCLUDEPATH += $$system(python3 -c \'from distutils import sysconfig; print(sysconfig.get_config_var(\"INCLUDEPY\"))\')
