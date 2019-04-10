@@ -11,6 +11,8 @@ from google.cloud.speech import enums
 from google.cloud.speech import types
 from six.moves import queue
 
+import pyttsx3
+
 # Audio recording parameters
 RATE = 16000
 CHUNK = int(RATE / 10)  # 100ms
@@ -80,7 +82,12 @@ class DialogflowClient(object):
             yield b''.join(data)
 
 
-def listen_print_loop(responses):
+def vocalize(s):
+    pyttsx3.say(s)
+    pyttsx3.runAndWait()
+
+
+def listen_print_loop(responses, chesscomm):
     """Iterates through server responses and prints them.
 
     The responses passed is a generator that will block until a response
@@ -147,16 +154,47 @@ def listen_print_loop(responses):
                 response.query_result.parameters))
 
             intent = query_result.intent.display_name
-            if intent == 'Save Game':
-                print('Do Save Game here')
-            elif intent == 'Move':
-                print('Do Move here, spaces are in response')
-            elif intent == 'Resign':
-                print('Do Resign here')
-            elif intent == 'New Game':
-                print('Do New Game here')
 
-def main(detector):
+            if chesscomm is None:
+                # should only get here when 'speech.py' is invoked directly
+                print("'chesscomm' is None: skipping")
+                return
+
+            if intent == 'Save Game':
+                try:
+                    chesscomm.save_game()
+                except RuntimeError:
+                    vocalize("Couldn't save game.  No game is currently being played.")
+                else:
+                    vocalize("Game saved.");
+            elif intent == 'Move':
+                try:
+                    assert False, "'Move' intent not yet implemented."
+                    chesscomm.make_move() # need a string like "a2 a4" or "a2a4"
+                except ValueError as e:
+                    if "No active game" in e.args[0]:
+                        vocalize("Couldn't make move.  No game is currently being played.")
+                    else:
+                        vocalize("Requested move is illegal.")
+                else:
+                    vocalize("Move made.");
+            elif intent == 'Resign':
+                try:
+                    chesscomm.resign_game()
+                except RuntimeError:
+                    vocalize("Couldn't resign game.  No game is currently being played.")
+                else:
+                    vocalize("Resigned game.");
+            elif intent == 'New Game':
+                try:
+                    chesscomm.new_game()
+                except RuntimeError:
+                    vocalize("Couldn't start new game.  A game is currently being played.")
+                else:
+                    vocalize("New game started.");
+
+def main(detector, chesscomm):
+    pyttsx3.init()
     detector.terminate()
     print("hotword detected")
     # See http://g.co/cloud/speech/docs/languages
@@ -180,8 +218,8 @@ def main(detector):
         responses = client.streaming_recognize(streaming_config, requests)
 
         # Now, put the transcription responses to use.
-        listen_print_loop(responses)
+        listen_print_loop(responses, chesscomm)
 
 if __name__ == '__main__':
     detector = snowboydecoder.HotwordDetector("resources/snowboy.umdl", sensitivity=0.5, audio_gain=1)
-    detector.start(partial(main, detector))
+    detector.start(partial(main, detector, None))
