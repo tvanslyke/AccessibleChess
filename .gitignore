@@ -18,7 +18,6 @@ accessible-chess-private-key.json
 speech/__pycache__
 .qmake.stash
 speech/*.pyc
-speech/*snowboy*.py
 speech/_snowboydetect.so
 cutechess/build/*
 !cutechess/build/dummy.txt
