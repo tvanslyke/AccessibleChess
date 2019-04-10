@@ -1,4 +1,3 @@
 cutechess/gui/Cute\ Chess.app
 speech/*.pyc
-speech/*snowboy*.py
 speech/_snowboydetect.so
