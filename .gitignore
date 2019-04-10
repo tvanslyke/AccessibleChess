@@ -21,4 +21,5 @@ speech/*.pyc
 speech/*snowboy*.py
 speech/_snowboydetect.so
 cutechess/build/*
+!cutechess/build/dummy.txt
 cutechess/cutechess
