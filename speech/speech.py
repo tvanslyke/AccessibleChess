@@ -143,7 +143,18 @@ def listen_print_loop(responses):
                 response.query_result.intent_detection_confidence))
             print('Fulfillment text: {}\n'.format(
                 response.query_result.fulfillment_text))
+            print('Responses: {}\n'.format(
+                response.query_result.parameters))
 
+            intent = query_result.intent.display_name
+            if intent == 'Save Game':
+                print('Do Save Game here')
+            elif intent == 'Move':
+                print('Do Move here, spaces are in response')
+            elif intent == 'Resign':
+                print('Do Resign here')
+            elif intent == 'New Game':
+                print('Do New Game here')
 
 def main(detector):
     detector.terminate()
