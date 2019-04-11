@@ -17,6 +17,6 @@ def main(comm):
 	thrd.start()
 	snowboy_umdl = os.path.join(os.path.split(os.path.realpath(__file__))[0], "resources/snowboy.umdl")
 	detector = snowboydecoder.HotwordDetector(snowboy_umdl, sensitivity=0.5, audio_gain=1)
-	detector.start(partial(main, detector, comm))
+	detector.start(partial(speech.main, detector, comm))
 	
 
