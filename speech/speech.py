@@ -4,12 +4,23 @@ import pyaudio
 import re
 import snowboydecoder
 import sys
+import uuid
+import json
+try:
+	import pyttsx3
+except ImportError:
+	print("Couldn't import pyttsx3.  Install with 'python3 -m pip install pyttsx3 --user'.", file=sys.stderr)
+	exit(-1)
 
 from functools import partial
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
+from google.protobuf.json_format import MessageToJson
 from six.moves import queue
+
+
+session_id = uuid.uuid4()
 
 # Audio recording parameters
 RATE = 16000
@@ -79,8 +90,15 @@ class DialogflowClient(object):
 
             yield b''.join(data)
 
+def vocalize(s, __eng=[]):
+    if not __eng:
+        __eng.append(pyttsx3.init())
+    eng = __eng[0]
+    eng[0].say(s)
+    eng[0].runAndWait()
 
-def listen_print_loop(responses):
+
+def listen_print_loop(responses, chesscomm):
     """Iterates through server responses and prints them.
 
     The responses passed is a generator that will block until a response
@@ -127,7 +145,7 @@ def listen_print_loop(responses):
             print(transcript + overwrite_chars)
             session_client = dialogflow.SessionsClient()
 
-            session = session_client.session_path('softwareengineering-236414', 1)
+            session = session_client.session_path('softwareengineering-236414', session_id)
             print('Session path: {}\n'.format(session))
 
             text_input = dialogflow.types.TextInput(
@@ -147,17 +165,51 @@ def listen_print_loop(responses):
                 response.query_result.parameters))
 
             intent = query_result.intent.display_name
-            if intent == 'Save Game':
-                print('Do Save Game here')
-            elif intent == 'Move':
-                print('Do Move here, spaces are in response')
-            elif intent == 'Resign':
-                print('Do Resign here')
-            elif intent == 'New Game':
-                print('Do New Game here')
 
-def main(detector):
-    detector.terminate()
+            if chesscomm is None:
+                # should only get here when 'speech.py' is invoked directly
+                print("'chesscomm' is None: skipping")
+                return
+
+            if intent == 'Save Game':
+                try:
+                    chesscomm.save_game()
+                except RuntimeError:
+                    vocalize("Couldn't save game.  No game is currently being played.")
+                else:
+                    vocalize("Game saved.");
+            elif intent == 'Move':
+                # don't catch exceptions from these two lines, if this fails we need to fix our code
+                params = response.query_result.parameters
+                movestr = " ".join(params.Square1, params.Square2)
+                try:
+                    chesscomm.make_move(movestr)
+                except ValueError as e:
+                    if "No active game" in e.args[0]:
+                        vocalize("Couldn't make move.  No game is currently being played.")
+                    else:
+                        vocalize("Requested move is illegal.")
+                else:
+                    vocalize("Move made.");
+            elif intent == 'Resign':
+                try:
+                    chesscomm.resign_game()
+                except RuntimeError:
+                    vocalize("Couldn't resign game.  No game is currently being played.")
+                else:
+                    vocalize("Resigned game.");
+            elif intent == 'New Game':
+                try:
+                    chesscomm.new_game()
+                except RuntimeError:
+                    vocalize("Couldn't start new game.  A game is currently being played.")
+                else:
+                    vocalize("New game started.");
+
+def main(detector, chesscomm):
+    pyttsx3.init()
+    if detector is not None:
+	    detector.terminate()
     print("hotword detected")
     # See http://g.co/cloud/speech/docs/languages
     # for a list of supported languages.
@@ -176,12 +228,10 @@ def main(detector):
         audio_generator = stream.generator()
         requests = (types.StreamingRecognizeRequest(audio_content=content)
                     for content in audio_generator)
-
         responses = client.streaming_recognize(streaming_config, requests)
-
         # Now, put the transcription responses to use.
-        listen_print_loop(responses)
+        listen_print_loop(responses, chesscomm)
 
 if __name__ == '__main__':
     detector = snowboydecoder.HotwordDetector("resources/snowboy.umdl", sensitivity=0.5, audio_gain=1)
-    detector.start(partial(main, detector))
+    detector.start(partial(main, detector, None))
