@@ -4,14 +4,23 @@ import pyaudio
 import re
 import snowboydecoder
 import sys
+import uuid
+import json
+try:
+	import pyttsx3
+except ImportError:
+	print("Couldn't import pyttsx3.  Install with 'python3 -m pip install pyttsx3 --user'.", file=sys.stderr)
+	exit(-1)
 
 from functools import partial
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
+from google.protobuf.json_format import MessageToJson
 from six.moves import queue
 
-import pyttsx3
+
+session_id = uuid.uuid4()
 
 # Audio recording parameters
 RATE = 16000
@@ -136,7 +145,7 @@ def listen_print_loop(responses, chesscomm):
             print(transcript + overwrite_chars)
             session_client = dialogflow.SessionsClient()
 
-            session = session_client.session_path('softwareengineering-236414', 1)
+            session = session_client.session_path('softwareengineering-236414', session_id)
             print('Session path: {}\n'.format(session))
 
             text_input = dialogflow.types.TextInput(
@@ -170,9 +179,11 @@ def listen_print_loop(responses, chesscomm):
                 else:
                     vocalize("Game saved.");
             elif intent == 'Move':
+                # don't catch exceptions from these two lines, if this fails we need to fix our code
+                params = response.query_result.parameters
+                movestr = " ".join(params.Square1, params.Square2)
                 try:
-                    assert False, "'Move' intent not yet implemented."
-                    chesscomm.make_move() # need a string like "a2 a4" or "a2a4"
+                    chesscomm.make_move(movestr)
                 except ValueError as e:
                     if "No active game" in e.args[0]:
                         vocalize("Couldn't make move.  No game is currently being played.")
