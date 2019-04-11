@@ -2,7 +2,10 @@
 
 import collections
 import pyaudio
-import snowboydetect
+try:
+	import snowboydetect
+except:
+	from snowboy import snowboydetect
 import time
 import wave
 import os
