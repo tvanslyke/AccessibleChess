@@ -81,10 +81,12 @@ class DialogflowClient(object):
 
             yield b''.join(data)
 
-
-def vocalize(s):
-    pyttsx3.say(s)
-    pyttsx3.runAndWait()
+def vocalize(s, __eng=[]):
+    if not __eng:
+        __eng.append(pyttsx3.init())
+    eng = __eng[0]
+    eng[0].say(s)
+    eng[0].runAndWait()
 
 
 def listen_print_loop(responses, chesscomm):
@@ -195,7 +197,8 @@ def listen_print_loop(responses, chesscomm):
 
 def main(detector, chesscomm):
     pyttsx3.init()
-    detector.terminate()
+    if detector is not None:
+	    detector.terminate()
     print("hotword detected")
     # See http://g.co/cloud/speech/docs/languages
     # for a list of supported languages.
@@ -214,9 +217,7 @@ def main(detector, chesscomm):
         audio_generator = stream.generator()
         requests = (types.StreamingRecognizeRequest(audio_content=content)
                     for content in audio_generator)
-
         responses = client.streaming_recognize(streaming_config, requests)
-
         # Now, put the transcription responses to use.
         listen_print_loop(responses, chesscomm)
 
