@@ -233,5 +233,5 @@ def main(detector, chesscomm):
         listen_print_loop(responses, chesscomm)
 
 if __name__ == '__main__':
-    detector = snowboydecoder.HotwordDetector("resources/snowboy.umdl", sensitivity=0.5, audio_gain=1)
+    detector = snowboydecoder.HotwordDetector("resources/Gambit.pmdl", sensitivity=0.5, audio_gain=1)
     detector.start(partial(main, detector, None))
