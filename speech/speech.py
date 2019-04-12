@@ -18,7 +18,7 @@ from google.cloud.speech import enums
 from google.cloud.speech import types
 from google.protobuf.json_format import MessageToJson
 from six.moves import queue
-
+from subprocess import call
 
 session_id = uuid.uuid4()
 
@@ -90,12 +90,8 @@ class DialogflowClient(object):
 
             yield b''.join(data)
 
-def vocalize(s, __eng=[]):
-    if not __eng:
-        __eng.append(pyttsx3.init())
-    eng = __eng[0]
-    eng.say(s)
-    eng.runAndWait()
+def vocalize(s):
+    call(["python3", "echo.py", s])
 
 
 def listen_print_loop(responses, chesscomm):
