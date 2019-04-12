@@ -165,7 +165,6 @@ def listen_print_loop(responses, chesscomm):
                 response.query_result.parameters))
 
             intent = response.query_result.intent.display_name
-
             if chesscomm is None:
                 # should only get here when 'speech.py' is invoked directly
                 print("'chesscomm' is None: skipping")
@@ -207,7 +206,6 @@ def listen_print_loop(responses, chesscomm):
                     vocalize("New game started.")
             elif intent == "Default Fallback Intent":
                 vocalize(response.query_result.fulfillment_text)
-
 
 def main(detector, chesscomm):
     pyttsx3.init()
