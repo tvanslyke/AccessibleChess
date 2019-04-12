@@ -3,6 +3,7 @@
 #include <Python.h>
 #include <iostream>
 #include <thread>
+#include <atomic>
 #include "cutechessapp.h"
 #include "mainwindow.h"
 
@@ -21,36 +22,34 @@ pyobject_ptr<> VoiceAssistant::accessible_chess_module{nullptr};
 
 VoiceAssistant::VoiceAssistant():
 	game_(nullptr),
-	py_comm_(nullptr)
+	py_comm_(nullptr),
+	python_thread_()
 {
-	PyObject* module_main = nullptr;
-	{
+	std::atomic<bool> is_ready(false);
+	python_thread_ = std::thread([&is_ready](VoiceAssistant* va) {
+		VoiceAssistant::init_python_interpreter();
 		// Acquire the GIL.
 		std::lock_guard<GILMutex> hold_(gil_mutex);
 		// Find the accessible_chess.py module's main() function.
-		module_main = PyObject_GetAttrString(accessible_chess_module.get(), "main");
+		pyobject_ptr<> main_fn(PyObject_GetAttrString(accessible_chess_module.get(), "main"));
 		check_python_exceptions();
-		assert(module_main); // shouldn't happen, an exception ought to have been set if this is null
-		assert(PyFunction_Check(module_main) && "accessible_chess.main() is not a function!");
+		assert(main_fn); // shouldn't happen, an exception ought to have been set if this is null
+		assert(PyFunction_Check(main_fn.get()) && "accessible_chess.main is not a function!");
 		// Create a new PyComm Python object by invoking the associated type object
-		py_comm_.reset(static_cast<PyComm*>(PyObject_CallFunctionObjArgs(
+		va->py_comm_.reset(static_cast<PyComm*>(PyObject_CallFunctionObjArgs(
 			reinterpret_cast<PyObject*>(&PyComm::python_type),
 			static_cast<PyObject*>(nullptr)
 		)));
 		check_python_exceptions();
-		assert(py_comm_);
-		py_comm_->initialize(this);
-	}
-	// We have to acquire the GIL here because we INCREF py_comm_.  We'll pass the lock to the
-	// newly-created thread momentarily.
-	std::unique_lock<GILMutex> hold(gil_mutex);
-	// Invoke 'accessible_chess.main()' in its own thread.
-	std::thread python_thread([](std::unique_lock<GILMutex> lock, pyobject_ptr<> main_fn, pyobject_ptr<> pycomm) {
-		// suppress unused parameter warning; we only need 'lock' for its destructor
-		(void)lock;
+		assert(va->py_comm_);
+		va->py_comm_->initialize(va);
+		pyobject_ptr<> pycomm(copy_ref(va->py_comm_));
+		is_ready = true;
+		// Invoke 'accessible_chess.main()' with the PyComm object.
+		static_cast<pyobject_ptr<>>(
+			PyObject_CallFunctionObjArgs(main_fn.get(), pycomm.get(), static_cast<PyObject*>(nullptr))
+		);
 		try {
-			// Invoke 'accessible_chess.main()' with the PyComm object.
-			PyObject_CallFunctionObjArgs(main_fn.get(), pycomm.get(), static_cast<PyObject*>(nullptr));
 			check_python_exceptions();
 		} catch(const PythonException& e) {
 			std::cerr << "Unhandled Python exception:" << std::endl;
@@ -61,10 +60,17 @@ VoiceAssistant::VoiceAssistant():
 			std::cerr << e.what() << std::endl;
 			std::terminate();
 		}
-	}, std::move(hold), pyobject_ptr<>(module_main), copy_ref(py_comm_));
-	// The thread is on its own now, but we can talk to it with 'this->py_comm_'.
-	python_thread.detach();
+	}, this);
+	// wait for initialization of 'py_comm_'
+	while(not is_ready) {
+		std::this_thread::yield();
+	}
 }
+
+VoiceAssistant::~VoiceAssistant() {
+	python_thread_.join();
+}
+
 
 Chess::Board* VoiceAssistant::board() const {
 	return game_ ? game_->board() : nullptr;
