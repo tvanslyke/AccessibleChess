@@ -14,6 +14,7 @@
 #include "humanplayer.h"
 #include "gamemanager.h"
 #include "chessgame.h"
+#include <thread>
 
 class MainWindow;
 
@@ -24,6 +25,7 @@ public:
 	static py::GILMutex gil_mutex;
 
 	VoiceAssistant();
+	~VoiceAssistant();
 
 	/** Get the board for the current game. */
 	Chess::Board* board() const;
@@ -55,6 +57,7 @@ private:
 
 	ChessGame*                    game_;
 	py::pyobject_ptr<py::PyComm>  py_comm_;
+	std::thread                   python_thread_;
 };
 
 

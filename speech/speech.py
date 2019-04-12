@@ -94,8 +94,8 @@ def vocalize(s, __eng=[]):
     if not __eng:
         __eng.append(pyttsx3.init())
     eng = __eng[0]
-    eng[0].say(s)
-    eng[0].runAndWait()
+    eng.say(s)
+    eng.runAndWait()
 
 
 def listen_print_loop(responses, chesscomm):
@@ -164,7 +164,7 @@ def listen_print_loop(responses, chesscomm):
             print('Responses: {}\n'.format(
                 response.query_result.parameters))
 
-            intent = query_result.intent.display_name
+            intent = response.query_result.intent.display_name
 
             if chesscomm is None:
                 # should only get here when 'speech.py' is invoked directly
@@ -177,11 +177,11 @@ def listen_print_loop(responses, chesscomm):
                 except RuntimeError:
                     vocalize("Couldn't save game.  No game is currently being played.")
                 else:
-                    vocalize("Game saved.");
+                    vocalize("Game saved.")
             elif intent == 'Move':
                 # don't catch exceptions from these two lines, if this fails we need to fix our code
                 params = response.query_result.parameters
-                movestr = " ".join(params.Square1, params.Square2)
+                movestr = " ".join(params.Space1, params.Space2)
                 try:
                     chesscomm.make_move(movestr)
                 except ValueError as e:
@@ -190,21 +190,24 @@ def listen_print_loop(responses, chesscomm):
                     else:
                         vocalize("Requested move is illegal.")
                 else:
-                    vocalize("Move made.");
+                    vocalize("Move made.")
             elif intent == 'Resign':
                 try:
                     chesscomm.resign_game()
                 except RuntimeError:
                     vocalize("Couldn't resign game.  No game is currently being played.")
                 else:
-                    vocalize("Resigned game.");
+                    vocalize("Resigned game.")
             elif intent == 'New Game':
                 try:
                     chesscomm.new_game()
                 except RuntimeError:
                     vocalize("Couldn't start new game.  A game is currently being played.")
                 else:
-                    vocalize("New game started.");
+                    vocalize("New game started.")
+            elif intent == "Default Fallback Intent":
+                vocalize(response.query_result.fulfillment_text)
+
 
 def main(detector, chesscomm):
     pyttsx3.init()
@@ -214,8 +217,8 @@ def main(detector, chesscomm):
     # See http://g.co/cloud/speech/docs/languages
     # for a list of supported languages.
     language_code = 'en-US'  # a BCP-47 language tag
-
     client = speech.SpeechClient()
+
     config = types.RecognitionConfig(
         encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=RATE,
@@ -223,7 +226,6 @@ def main(detector, chesscomm):
     streaming_config = types.StreamingRecognitionConfig(
         config=config,
         interim_results=True)
-
     with DialogflowClient(RATE, CHUNK) as stream:
         audio_generator = stream.generator()
         requests = (types.StreamingRecognizeRequest(audio_content=content)
