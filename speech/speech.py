@@ -198,7 +198,7 @@ def listen_print_loop(responses, chesscomm):
             elif intent == 'Move':
                 # don't catch exceptions from these two lines, if this fails we need to fix our code
                 params = response.query_result.parameters
-                movestr = " ".join(params["Space1"], params["Space2"])
+                movestr = " ".join((params["Space1"], params["Space2"]))
                 try:
                     chesscomm.make_move(movestr)
                 except ValueError as e:
