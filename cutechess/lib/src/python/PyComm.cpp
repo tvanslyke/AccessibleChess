@@ -2,6 +2,9 @@
 #include "python/voiceassistant.h"
 #include "python/MessageQueue.h"
 #include "mainwindow.h"
+#include "newgamedlg.h"
+#include <algorithm>
+#include <cstring>
 
 using namespace py;
 
@@ -43,7 +46,6 @@ ChessGame* PyComm::game() const {
 	return voice_assistant ? voice_assistant->game() : nullptr;
 }
 
-
 static PyObject* PyComm_new_game(PyObject* slf, PyObject* args) {
 	(void)args;
 	PY_COMM_ENSURE(slf, self, nullptr)
@@ -70,12 +72,19 @@ static PyObject* PyComm_resign_game(PyObject* slf, PyObject* args) {
 static PyObject* PyComm_save_game(PyObject* slf, PyObject* args) {
 	(void)args;
 	PY_COMM_ENSURE(slf, self, nullptr)
-	if(not self->game()) {
+	if((not self->game()) or (self->game()->isFinished())) {
 		return PyErr_Format(PyExc_RuntimeError, "Cannot save without an active game.");
 	}
 	assert(self->voice_assistant);
-	emit self->voice_assistant->saveGame();
+	self->voice_assistant->game_window()->saveGame(SAVED_GAME_PATH_STRING);
+	// emit self->voice_assistant->saveGame();
 	Py_RETURN_NONE;
+}
+
+static PyObject* PyComm_load_game(PyObject* slf, PyObject* args) {
+	(void)args;
+	PY_COMM_ENSURE(slf, self, nullptr)
+	return PyErr_Format(PyExc_RuntimeError, "PyComm.load_game() is not yet implemented.");
 }
 
 static PyObject* PyComm_board_fen(PyObject* slf, PyObject* args) {
@@ -132,6 +141,109 @@ static PyObject* PyComm_active_game(PyObject* slf, PyObject* args) {
 		Py_RETURN_FALSE;
 	}
 }
+
+static PyObject* PyComm_is_creating_new_game(PyObject* slf, PyObject* args) {
+	(void)args;
+	PY_COMM_ENSURE(slf, self, nullptr)
+	auto* va = self->voice_assistant;
+	if(va->active_new_game_dialog()) {
+		Py_RETURN_TRUE;
+	} else {
+		Py_RETURN_FALSE;
+	}
+}
+
+static PyObject* PyComm_set_player_type(PyObject* slf, PyObject* args) {
+	PY_COMM_ENSURE(slf, self, nullptr)
+	auto va = self->voice_assistant;
+	if(not va->active_new_game_dialog()) {
+		return PyErr_Format(PyExc_ValueError, "Cannot set player type while there is no active new game dialog.");
+	} 
+	const char* color = nullptr;
+	const char* player_type  = nullptr;
+	if(not PyArg_ParseTuple(args, "ss", &color, &player_type)) {
+		return nullptr;
+	}
+	assert(color);
+	assert(player_type);
+	std::string color_string;
+	std::string player_type_string;
+	try {
+		auto to_lower = [](unsigned char c) { return static_cast<char>(std::tolower(c)); };
+		std::transform(color, color + std::strlen(color), std::back_inserter(color_string), to_lower);
+		std::transform(player_type, player_type + std::strlen(player_type), std::back_inserter(player_type_string), to_lower);
+	} catch(const std::bad_alloc&) {
+		PyErr_NoMemory();
+		return nullptr;
+	}
+	if(color_string == "black") {
+		if(player_type_string == "cpu") {
+			emit va->chooseBlackCPUPlayer();
+		} else if(player_type_string == "human") {
+			emit va->chooseBlackHumanPlayer();
+		} else {
+			return PyErr_Format(
+				PyExc_ValueError,
+				"'player_type' argument must be one of 'cpu' or 'human' (case insensitive) not '%s'.",
+				player_type
+			);
+		}
+	} else if(color_string == "white") {
+		if(player_type_string == "cpu") {
+			emit va->chooseWhiteCPUPlayer();
+		} else if(player_type_string == "human") {
+			emit va->chooseWhiteHumanPlayer();
+		} else {
+			return PyErr_Format(
+				PyExc_ValueError,
+				"'player_type' argument must be one of 'cpu' or 'human' (case insensitive) not '%s'.",
+				player_type
+			);
+		}
+	} else {
+		return PyErr_Format(
+			PyExc_ValueError,
+			"'side' argument must be one of 'black' or 'white' (case insensitive) not '%s'.",
+			color
+		);
+	}
+	Py_RETURN_NONE;
+}
+
+static PyObject* PyComm_cancel_new_game(PyObject* slf, PyObject* args) {
+	PY_COMM_ENSURE(slf, self, nullptr)
+	(void)args;
+	auto va = self->voice_assistant;
+	if(not va->active_new_game_dialog()) {
+		return PyErr_Format(PyExc_ValueError, "Cannot cancel new game while there is no active new game dialog.");
+	}
+	emit va->cancelNewGame();
+	Py_RETURN_NONE;
+}
+
+static PyObject* PyComm_start_new_game(PyObject* slf, PyObject* args) {
+	PY_COMM_ENSURE(slf, self, nullptr)
+	(void)args;
+	auto va = self->voice_assistant;
+	if(not va->active_new_game_dialog()) {
+		return PyErr_Format(PyExc_ValueError, "Cannot start new game while there is no active new game dialog.");
+	}
+	emit va->acceptNewGame();
+	Py_RETURN_NONE;
+}
+
+static PyObject* PyComm_load_saved_game(PyObject* slf, PyObject* args) {
+	PY_COMM_ENSURE(slf, self, nullptr)
+	(void)args;
+	auto va = self->voice_assistant;
+	if(not va->active_new_game_dialog()) {
+		return PyErr_Format(PyExc_ValueError, "Cannot start new game while there is no active new game dialog.");
+	}
+	va->get_new_game_dialog()->load_mode = true;
+	emit va->acceptNewGame();
+	Py_RETURN_NONE;
+}
+
 
 static PyGetSetDef PyComm_getset[] = {
 	PyGetSetDef{
@@ -206,8 +318,38 @@ static PyMethodDef PyComm_methods[] = {
 		METH_NOARGS,
 		"Obtain the FEN string for the currently-active game."
 	},
-	PyMethodDef{nullptr, nullptr, 0, nullptr}
-	
+	PyMethodDef{
+		"is_creating_new_game",
+		reinterpret_cast<PyCFunction>(PyComm_is_creating_new_game),
+		METH_NOARGS,
+		"Check whether there is an active new game dialog open."
+	},
+	PyMethodDef{
+		"set_player_type",
+		reinterpret_cast<PyCFunction>(PyComm_set_player_type),
+		METH_VARARGS,
+		"Set player on 'side' (\"black\" or \"white\") to 'player_type' (\"cpu\" or \"human\")."\
+		" (only valid during a new game dialog)"
+	},
+	PyMethodDef{
+		"cancel_new_game",
+		reinterpret_cast<PyCFunction>(PyComm_cancel_new_game),
+		METH_NOARGS,
+		"Cancel a the currently-active new game dialog. (only valid during a new game dialog)"
+	},
+	PyMethodDef{
+		"start_new_game",
+		reinterpret_cast<PyCFunction>(PyComm_start_new_game),
+		METH_NOARGS,
+		"Finish creating a new game. (only valid during a new game dialog)"
+	},
+	PyMethodDef{
+		"load_saved_game",
+		reinterpret_cast<PyCFunction>(PyComm_load_saved_game),
+		METH_NOARGS,
+		"Finish creating a new game by loading the saved game. (only valid during a new game dialog)"
+	},
+	PyMethodDef{nullptr, nullptr, 0, nullptr}	
 };
 
 PyTypeObject PyComm::python_type{

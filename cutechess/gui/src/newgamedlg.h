@@ -22,13 +22,13 @@
 #include <QDialog>
 #include <board/side.h>
 #include <engineconfiguration.h>
-#include "python/voiceassistant.h"
 
 class ChessGame;
 class PlayerBuilder;
 class EngineConfigurationModel;
 class EngineConfigurationProxyModel;
 class EngineManager;
+class VoiceAssistant;
 
 namespace Ui {
 	class NewGameDialog;
@@ -42,6 +42,7 @@ class NewGameDialog : public QDialog
 	Q_OBJECT
 
 	public:
+		bool load_mode = false;
 		/*! Player's type. */
 		enum PlayerType
 		{
@@ -60,6 +61,8 @@ class NewGameDialog : public QDialog
 		/*! Destroys the dialog. */
 		virtual ~NewGameDialog();
 
+		/*! Creates and returns the ChessGame object. */
+		ChessGame* loadGame() const;
 		/*! Creates and returns the ChessGame object. */
 		ChessGame* createGame() const;
 		/*! Creates and returns the PlayerBuilder for \a side. */
