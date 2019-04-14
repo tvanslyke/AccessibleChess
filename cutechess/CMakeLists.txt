@@ -263,6 +263,8 @@ target_compile_definitions(
 	Z_PREFIX=
 	CUTECHESS_VERSION="1.1.0"
 	VOICE_ASSISTANT_PATH=${PROJECT_SOURCE_DIR}/../speech
+	STOCKFISH_EXECUTABLE_PATH_STRING="${PROJECT_SOURCE_DIR}/../stockfish/stockfish"
+	SAVED_GAME_PATH_STRING="${PROJECT_SOURCE_DIR}/../saved-games/game.pgn"
 )
 target_compile_definitions(
 	cutechess
@@ -270,6 +272,8 @@ target_compile_definitions(
 	LIB_EXPORT=
 	Z_PREFIX=
 	VOICE_ASSISTANT_PATH=${PROJECT_SOURCE_DIR}/../speech
+	STOCKFISH_EXECUTABLE_PATH_STRING="${PROJECT_SOURCE_DIR}/../stockfish/stockfish"
+	SAVED_GAME_PATH_STRING="${PROJECT_SOURCE_DIR}/../saved-games/game.pgn"
 )
 set_target_properties(cutechess-bin PROPERTIES OUTPUT_NAME "cutechess")
 

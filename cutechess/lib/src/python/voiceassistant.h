@@ -17,6 +17,7 @@
 #include <thread>
 
 class MainWindow;
+class NewGameDialog;
 
 class LIB_EXPORT VoiceAssistant: public QObject
 {
@@ -31,12 +32,29 @@ public:
 	Chess::Board* board() const;
 	MainWindow* game_window() const;
 	ChessGame* game() const;
+	void set_new_game_dialog(NewGameDialog* p) {
+		new_game_dialog_ = p;
+	}
+
+	bool active_new_game_dialog() const {
+		return new_game_dialog_;
+	}
+
+	NewGameDialog* get_new_game_dialog() const {
+		return new_game_dialog_;
+	}
 
 signals:
 	void humanMoveMade(const Chess::GenericMove& move, const Chess::Side& side);
 	void newGame();
 	void saveGame();
 	void resignGame();
+	void chooseBlackCPUPlayer();
+	void chooseWhiteCPUPlayer();
+	void chooseBlackHumanPlayer();
+	void chooseWhiteHumanPlayer();
+	void acceptNewGame();
+	void cancelNewGame();
 
 public slots:
 	void onMoveMade(const Chess::GenericMove& move, const QString& sanString, const QString& comment);
@@ -56,6 +74,7 @@ private:
 	static py::pyobject_ptr<> accessible_chess_module;
 
 	ChessGame*                    game_;
+	NewGameDialog*                new_game_dialog_;
 	py::pyobject_ptr<py::PyComm>  py_comm_;
 	std::thread                   python_thread_;
 };

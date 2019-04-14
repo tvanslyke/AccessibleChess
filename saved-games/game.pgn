@@ -1,0 +1,15 @@
+[Event "?"]
+[Site "?"]
+[Date "2019.04.13"]
+[Round "?"]
+[White "Tim"]
+[Black "Tim"]
+[Result "*"]
+[ECO "A00"]
+[GameStartTime "2019-04-13T19:59:28.875 EDT"]
+[Opening "Mieses Opening"]
+[Termination "unterminated"]
+[TimeControl "inf"]
+
+1. d3 c5 {0.96s} 2. Qd2 {2.5s} *
+

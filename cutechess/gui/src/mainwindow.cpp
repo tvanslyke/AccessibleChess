@@ -725,10 +725,20 @@ void MainWindow::newGame()
 	EngineManager* engineManager = CuteChessApplication::instance()->engineManager();
 	VoiceAssistant* voiceAssistant = CuteChessApplication::instance()->voiceAssistant();
 	NewGameDialog dlg(engineManager, voiceAssistant, this);
-	if (dlg.exec() != QDialog::Accepted)
-		return;
-
-	auto game = dlg.createGame();
+	connect(voiceAssistant, &VoiceAssistant::acceptNewGame, &dlg, &NewGameDialog::accept);
+	connect(voiceAssistant, &VoiceAssistant::cancelNewGame, &dlg, &NewGameDialog::reject);
+	auto dlg_result = dlg.exec();
+	voiceAssistant->set_new_game_dialog(nullptr);
+	disconnect(voiceAssistant, &VoiceAssistant::acceptNewGame, &dlg, &NewGameDialog::accept);
+	disconnect(voiceAssistant, &VoiceAssistant::cancelNewGame, &dlg, &NewGameDialog::reject);
+	if (dlg_result != QDialog::Accepted)
+	 	return;
+	ChessGame* game;
+	if(dlg.load_mode) {
+		game = dlg.loadGame();
+	} else {
+		game = dlg.createGame();
+	}
 	if (!game)
 	{
 		QMessageBox::critical(this, tr("Could not initialize game"),

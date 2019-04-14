@@ -21,6 +21,7 @@
 
 #include <QAbstractItemView>
 #include <QSettings>
+#include <QFile>
 
 #include <board/boardfactory.h>
 #include <chessgame.h>
@@ -35,6 +36,8 @@
 #include "engineconfigurationdlg.h"
 #include "timecontroldlg.h"
 #include "stringvalidator.h"
+#include "python/voiceassistant.h"
+#include "pgnstream.h"
 
 #ifdef QT_DEBUG
 #include <modeltest.h>
@@ -58,6 +61,7 @@ NewGameDialog::NewGameDialog(EngineManager* engineManager, VoiceAssistant* va, Q
 		this, SLOT(configureEngine()));
 	connect(ui->m_configureBlackEngineButton, SIGNAL(clicked()),
 		this, SLOT(configureEngine()));
+	
 
 	m_proxyModel = new EngineConfigurationProxyModel(this);
 	m_proxyModel->setSourceModel(m_engines);
@@ -93,6 +97,27 @@ NewGameDialog::NewGameDialog(EngineManager* engineManager, VoiceAssistant* va, Q
 		setPlayerType(Chess::Side::Black, type);
 	});
 
+	connect(va, &VoiceAssistant::chooseBlackCPUPlayer, [=]() {
+		if(not ui->m_blackPlayerCpuRadio->isChecked()) {
+			ui->m_blackPlayerCpuRadio->toggle();
+		}
+	});
+	connect(va, &VoiceAssistant::chooseBlackHumanPlayer, [=]() {
+		if(ui->m_blackPlayerCpuRadio->isChecked()) {
+			ui->m_blackPlayerCpuRadio->toggle();
+		}
+	});
+	connect(va, &VoiceAssistant::chooseWhiteCPUPlayer, [=]() {
+		if(not ui->m_whitePlayerCpuRadio->isChecked()) {
+			ui->m_whitePlayerCpuRadio->toggle();
+		}
+	});
+	connect(va, &VoiceAssistant::chooseWhiteHumanPlayer, [=]() {
+		if(ui->m_whitePlayerCpuRadio->isChecked()) {
+			ui->m_whitePlayerCpuRadio->toggle();
+		}
+	});
+	va->set_new_game_dialog(this);
 	connect(ui->m_gameSettings, &GameSettingsWidget::statusChanged, [=](bool ok)
 	{
 		ui->m_buttonBox->button(QDialogButtonBox::Ok)->setEnabled(ok);
@@ -104,6 +129,47 @@ NewGameDialog::~NewGameDialog()
 	delete ui;
 }
 
+ChessGame* NewGameDialog::loadGame() const
+{
+	bool ok = true;
+	const QString variant = ui->m_gameSettings->chessVariant();
+	auto board = Chess::BoardFactory::create(variant);
+	QString fname(SAVED_GAME_PATH_STRING);
+	QFile game_file(std::move(fname));
+	if (!game_file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+		return nullptr;
+	}
+	PgnStream game_stream(&game_file);
+	auto pgn = new PgnGame();
+	pgn->setSite(QSettings().value("pgn/site").toString());
+	pgn->read(game_stream);
+	auto game = new ChessGame(board, pgn);
+
+	game->setTimeControl(ui->m_gameSettings->timeControl());
+	game->setAdjudicator(ui->m_gameSettings->adjudicator());
+
+	auto book = ui->m_gameSettings->openingBook();
+	if (book)
+	{
+		int depth = ui->m_gameSettings->bookDepth();
+		game->setBookOwnership(true);
+
+		for (int i = 0; i < 2; i++)
+		{
+			auto side = Chess::Side::Type(i);
+			if (playerType(side) == CPU)
+				game->setOpeningBook(book, side, depth);
+		}
+	}
+
+	if (!ok)
+	{
+		delete game;
+		return nullptr;
+	}
+
+	return game;
+}
 ChessGame* NewGameDialog::createGame() const
 {
 	bool ok = true;
