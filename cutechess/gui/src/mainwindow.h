@@ -58,6 +58,7 @@ class MainWindow : public QMainWindow
 		ChessGame* game() const;
 		void connectVoiceAssistant(VoiceAssistant* va);
 		void disconnectVoiceAssistant(VoiceAssistant* va);
+		bool saveGame(const QString& fileName);
 
 	public slots:
 		void addGame(ChessGame* game);
@@ -117,7 +118,6 @@ class MainWindow : public QMainWindow
 		QString nameOnClock(const QString& name, Chess::Side side) const;
 		void lockCurrentGame();
 		void unlockCurrentGame();
-		bool saveGame(const QString& fileName);
 		bool askToSave();
 		void setCurrentGame(const TabData& gameData);
 		void removeGame(int index);

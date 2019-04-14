@@ -27,29 +27,29 @@ VoiceAssistant::VoiceAssistant():
 {
 	std::atomic<bool> is_ready(false);
 	python_thread_ = std::thread([&is_ready](VoiceAssistant* va) {
-		VoiceAssistant::init_python_interpreter();
-		// Acquire the GIL.
-		std::lock_guard<GILMutex> hold_(gil_mutex);
-		// Find the accessible_chess.py module's main() function.
-		pyobject_ptr<> main_fn(PyObject_GetAttrString(accessible_chess_module.get(), "main"));
-		check_python_exceptions();
-		assert(main_fn); // shouldn't happen, an exception ought to have been set if this is null
-		assert(PyFunction_Check(main_fn.get()) && "accessible_chess.main is not a function!");
-		// Create a new PyComm Python object by invoking the associated type object
-		va->py_comm_.reset(static_cast<PyComm*>(PyObject_CallFunctionObjArgs(
-			reinterpret_cast<PyObject*>(&PyComm::python_type),
-			static_cast<PyObject*>(nullptr)
-		)));
-		check_python_exceptions();
-		assert(va->py_comm_);
-		va->py_comm_->initialize(va);
-		pyobject_ptr<> pycomm(copy_ref(va->py_comm_));
-		is_ready = true;
-		// Invoke 'accessible_chess.main()' with the PyComm object.
-		static_cast<pyobject_ptr<>>(
-			PyObject_CallFunctionObjArgs(main_fn.get(), pycomm.get(), static_cast<PyObject*>(nullptr))
-		);
 		try {
+			VoiceAssistant::init_python_interpreter();
+			// Acquire the GIL.
+			std::lock_guard<GILMutex> hold_(gil_mutex);
+			// Find the accessible_chess.py module's main() function.
+			pyobject_ptr<> main_fn(PyObject_GetAttrString(accessible_chess_module.get(), "main"));
+			check_python_exceptions();
+			assert(main_fn); // shouldn't happen, an exception ought to have been set if this is null
+			assert(PyFunction_Check(main_fn.get()) && "accessible_chess.main is not a function!");
+			// Create a new PyComm Python object by invoking the associated type object
+			va->py_comm_.reset(static_cast<PyComm*>(PyObject_CallFunctionObjArgs(
+				reinterpret_cast<PyObject*>(&PyComm::python_type),
+				static_cast<PyObject*>(nullptr)
+			)));
+			check_python_exceptions();
+			assert(va->py_comm_);
+			va->py_comm_->initialize(va);
+			pyobject_ptr<> pycomm(copy_ref(va->py_comm_));
+			is_ready = true;
+			// Invoke 'accessible_chess.main()' with the PyComm object.
+			static_cast<pyobject_ptr<>>(
+				PyObject_CallFunctionObjArgs(main_fn.get(), pycomm.get(), static_cast<PyObject*>(nullptr))
+			);
 			check_python_exceptions();
 		} catch(const PythonException& e) {
 			std::cerr << "Unhandled Python exception:" << std::endl;
@@ -112,19 +112,27 @@ void VoiceAssistant::set_game(ChessGame* new_game) {
 	// the associated MainWindow object).  In that case, wait for the game to emit our 
 	// gameWindowCreated() signal, and then finish connecting the signals.
 
-	// Disconnect the old game.
-	if(auto as_human = game() ? dynamic_cast<HumanPlayer*>(game()->player(Chess::Side::White)) : nullptr) {
-		disconnect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
+	if(game()) {
+		// Disconnect the old game.
+		auto white_player = game()->player(Chess::Side::White);
+		auto black_player = game()->player(Chess::Side::Black);
+		if(auto as_human = dynamic_cast<HumanPlayer*>(white_player)) {
+			disconnect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
+		}
+		if(auto as_human = dynamic_cast<HumanPlayer*>(black_player)) {
+			disconnect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
+		}
 	}
-	if(auto as_human = game() ? dynamic_cast<HumanPlayer*>(game()->player(Chess::Side::Black)) : nullptr) {
-		disconnect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
-	}
-	// Connect the new game.
-	if(auto as_human = dynamic_cast<HumanPlayer*>(new_game->player(Chess::Side::White))) {
-		connect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
-	}
-	if(auto as_human = dynamic_cast<HumanPlayer*>(new_game->player(Chess::Side::Black))) {
-		connect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
+	if(new_game) {
+		// Connect the new game.
+		auto white_player = new_game->player(Chess::Side::White);
+		auto black_player = new_game->player(Chess::Side::Black);
+		if(auto as_human = dynamic_cast<HumanPlayer*>(white_player)) {
+			connect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
+		}
+		if(auto as_human = dynamic_cast<HumanPlayer*>(black_player)) {
+			connect(this, &VoiceAssistant::humanMoveMade, as_human, &HumanPlayer::onHumanMove);
+		}
 	}
 	auto current_window = game_window();
 	if(current_window) {

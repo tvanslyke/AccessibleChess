@@ -31,6 +31,7 @@
 #include <chessgame.h>
 #include <timecontrol.h>
 #include <humanbuilder.h>
+#include <enginebuilder.h>
 
 #include "mainwindow.h"
 #include "settingsdlg.h"
@@ -84,6 +85,11 @@ CuteChessApplication::CuteChessApplication(int& argc, char* argv[])
 
 	// Load the engines
 	engineManager()->loadEngines(configPath() + QLatin1String("/engines.json"));
+	m_engineManager->addEngine(EngineConfiguration(
+		"stockfish",
+		STOCKFISH_EXECUTABLE_PATH_STRING,
+		"uci"
+	));
 
 	// Read the game database state
 	gameDatabaseManager()->readState(configPath() + QLatin1String("/gamedb.bin"));
@@ -181,21 +187,26 @@ MainWindow* CuteChessApplication::newGameWindow(ChessGame* game)
 
 void CuteChessApplication::newDefaultGame()
 {
+	
 	// default game is a human versus human game using standard variant and
 	// infinite time control
-	ChessGame* game = new ChessGame(Chess::BoardFactory::create("standard"),
-		new PgnGame());
+	std::unique_ptr<PgnGame> pgn_game(new PgnGame());
+	std::unique_ptr<ChessGame> game(new ChessGame(Chess::BoardFactory::create("standard"), pgn_game.get()));
+	pgn_game.release();
 
 	game->setTimeControl(TimeControl("inf"));
 	game->pause();
 
-	connect(game, SIGNAL(started(ChessGame*)),
+	connect(game.get(), SIGNAL(started(ChessGame*)),
 		this, SLOT(newGameWindow(ChessGame*)));
-	connect(game, &ChessGame::started, &m_voiceAssistant, &VoiceAssistant::onGameStarted);
+	connect(game.get(), &ChessGame::started, &m_voiceAssistant, &VoiceAssistant::onGameStarted);
 
-	gameManager()->newGame(game,
-			       new HumanBuilder(userName()),
-			       new HumanBuilder(userName()));
+	std::unique_ptr<HumanBuilder> human_builder1(new HumanBuilder(userName()));
+	std::unique_ptr<HumanBuilder> human_builder2(new HumanBuilder(userName()));
+	// std::unique_ptr<EngineBuilder> engine_builder(new EngineBuilder(
+	// 	m_engineManager->engineAt(m_engineManager->engineCount() - 1)
+	// ));
+	gameManager()->newGame(game.release(), human_builder1.release(), human_builder2.release());
 }
 
 void CuteChessApplication::showGameWindow(int index)

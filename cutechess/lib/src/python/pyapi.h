@@ -68,7 +68,7 @@ inline void check_python_exceptions() {
 	PyObject* exc_value;
 	PyObject* exc_tb;
 	PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
-	assert(exc_type and exc_value);
+	assert(exc_type or exc_value);
 	assert(not PyErr_Occurred());
 	PyErr_NormalizeException(&exc_type, &exc_value, &exc_tb);
 
@@ -79,11 +79,19 @@ inline void check_python_exceptions() {
 	assert(traceback_module);
 	std::string error_string;
 	{
-		pyobject_ptr<> err_string(PyUnicode_FromFormat(
-			"Python exception of type '%S' raised:\r\n\t\"%S\"",
-			tp.get(),
-			val.get()
-		));
+		pyobject_ptr<> err_string(nullptr);
+		if(val) {
+			err_string.reset(PyUnicode_FromFormat(
+				"Python exception of type '%S' raised:\r\n\t\"%S\"",
+				tp.get(),
+				val.get()
+			));
+		} else {
+			err_string.reset(PyUnicode_FromFormat(
+				"Python exception of type '%S' raised:",
+				tp.get()
+			));
+		}
 		assert(err_string);
 		Py_ssize_t sz;
 		const char* data = PyUnicode_AsUTF8AndSize(err_string.get(), &sz);
@@ -95,10 +103,18 @@ inline void check_python_exceptions() {
 	} else {
 		error_string += "\r\n";
 	}
-	pyobject_ptr<> fmt_exc_fn(PyObject_GetAttrString(traceback_module.get(), "format_exception"));
-	assert(fmt_exc_fn);
-	pyobject_ptr<> formatted_exc(PyObject_CallFunctionObjArgs(fmt_exc_fn.get(), tp.get(), val.get(), tb.get(), nullptr));
-	assert(formatted_exc);
+	pyobject_ptr<> formatted_exc;
+	if(val and tp) {
+		pyobject_ptr<> fmt_exc_fn(PyObject_GetAttrString(traceback_module.get(), "format_exception"));
+		assert(fmt_exc_fn);
+		formatted_exc.reset(PyObject_CallFunctionObjArgs(fmt_exc_fn.get(), tp.get(), val.get(), tb.get(), nullptr));
+		assert(formatted_exc);
+	} else {
+		pyobject_ptr<> fmt_tb_fn(PyObject_GetAttrString(traceback_module.get(), "format_exception"));
+		assert(fmt_tb_fn);
+		formatted_exc.reset(PyObject_CallFunctionObjArgs(fmt_tb_fn.get(), tb.get(), nullptr));
+		assert(formatted_exc);
+	}
 	pyobject_ptr<> tb_iter(PyObject_GetIter(formatted_exc.get()));
 	assert(PyIter_Check(tb_iter.get()));
 	for(

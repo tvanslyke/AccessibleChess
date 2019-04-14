@@ -21,7 +21,6 @@
 
 #include <QAbstractItemView>
 #include <QSettings>
-#include <QFile>
 
 #include <board/boardfactory.h>
 #include <chessgame.h>
@@ -37,7 +36,6 @@
 #include "timecontroldlg.h"
 #include "stringvalidator.h"
 #include "python/voiceassistant.h"
-#include "pgnstream.h"
 
 #ifdef QT_DEBUG
 #include <modeltest.h>
@@ -108,8 +106,8 @@ NewGameDialog::NewGameDialog(EngineManager* engineManager, VoiceAssistant* va, Q
 		}
 	});
 	connect(va, &VoiceAssistant::chooseWhiteCPUPlayer, [=]() {
-		if(not ui->m_whitePlayerCpuRadio->isChecked()) {
-			ui->m_whitePlayerCpuRadio->toggle();
+		if(not ui->m_blackPlayerCpuRadio->isChecked()) {
+			ui->m_blackPlayerCpuRadio->toggle();
 		}
 	});
 	connect(va, &VoiceAssistant::chooseWhiteHumanPlayer, [=]() {
@@ -134,19 +132,23 @@ ChessGame* NewGameDialog::loadGame() const
 	bool ok = true;
 	const QString variant = ui->m_gameSettings->chessVariant();
 	auto board = Chess::BoardFactory::create(variant);
-	QString fname(SAVED_GAME_PATH_STRING);
-	QFile game_file(std::move(fname));
-	if (!game_file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-		return nullptr;
-	}
-	PgnStream game_stream(&game_file);
+	QString fname(SAVED_GAMES_DIRECTORY_STRING);
+	fname += "/saved_game.pgn"
+	QFile file(std::move(fname));
 	auto pgn = new PgnGame();
 	pgn->setSite(QSettings().value("pgn/site").toString());
-	pgn->read(game_stream);
 	auto game = new ChessGame(board, pgn);
 
 	game->setTimeControl(ui->m_gameSettings->timeControl());
 	game->setAdjudicator(ui->m_gameSettings->adjudicator());
+
+	auto suite = ui->m_gameSettings->openingSuite();
+	if (suite)
+	{
+		int depth = ui->m_gameSettings->openingSuiteDepth();
+		ok = game->setMoves(suite->nextGame(depth));
+		delete suite;
+	}
 
 	auto book = ui->m_gameSettings->openingBook();
 	if (book)

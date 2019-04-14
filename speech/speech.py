@@ -6,6 +6,10 @@ import snowboydecoder
 import sys
 import uuid
 import json
+
+class RestartSnowboy(Exception):
+	pass
+
 try:
 	import pyttsx3
 except ImportError:
@@ -19,6 +23,7 @@ from google.cloud.speech import types
 from google.protobuf.json_format import MessageToJson
 from six.moves import queue
 
+ignore_audio = False
 
 session_id = uuid.uuid4()
 
@@ -65,6 +70,8 @@ class DialogflowClient(object):
 
     def _fill_buffer(self, in_data, frame_count, time_info, status_flags):
         """Continuously collect data from the audio stream, into the buffer."""
+        if ignore_audio:
+            return None, pyaudio.paContinue
         self._buff.put(in_data)
         return None, pyaudio.paContinue
 
@@ -91,11 +98,15 @@ class DialogflowClient(object):
             yield b''.join(data)
 
 def vocalize(s, __eng=[]):
+    global ignore_audio
+
     if not __eng:
         __eng.append(pyttsx3.init())
     eng = __eng[0]
     eng.say(s)
+    ignore_audio = True
     eng.runAndWait()
+    ignore_audio = False
 
 
 def listen_print_loop(responses, chesscomm):
@@ -169,49 +180,89 @@ def listen_print_loop(responses, chesscomm):
                 # should only get here when 'speech.py' is invoked directly
                 print("'chesscomm' is None: skipping")
                 return
-
-            if intent == 'Save Game':
+            elif intent == 'Save Game':
                 try:
                     chesscomm.save_game()
                 except RuntimeError:
-                    vocalize("Couldn't save game.  No game is currently being played.")
+                    return "Couldn't save game.  No game is currently being played."
                 else:
-                    vocalize("Game saved.")
+                    return "Game saved."
+            elif intent == 'Load Game':
+                if not chesscomm.is_creating_new_game():
+                    return "Cannot load game until a new game dialog is started."
+                try:
+                    chesscomm.load_saved_game()
+                except RuntimeError as e:
+                    print(e)
+                    return "Unable to load game."
+                else:
+                    return "Game loaded."
             elif intent == 'Move':
                 # don't catch exceptions from these two lines, if this fails we need to fix our code
                 params = response.query_result.parameters
-                movestr = " ".join(params.Space1, params.Space2)
+                movestr = " ".join(params["Space1"], params["Space2"])
                 try:
                     chesscomm.make_move(movestr)
                 except ValueError as e:
                     if "No active game" in e.args[0]:
-                        vocalize("Couldn't make move.  No game is currently being played.")
+                        return "Couldn't make move.  No game is currently being played."
                     else:
-                        vocalize("Requested move is illegal.")
+                        return "Requested move is illegal."
                 else:
-                    vocalize("Move made.")
+                    return "Move made."
             elif intent == 'Resign':
                 try:
                     chesscomm.resign_game()
                 except RuntimeError:
-                    vocalize("Couldn't resign game.  No game is currently being played.")
+                    return "Couldn't resign game.  No game is currently being played."
                 else:
-                    vocalize("Resigned game.")
+                    return "Resigned game."
             elif intent == 'New Game':
+                if chesscomm.is_creating_new_game():
+                    return "Already creating new game.  Say accept new game or done creating new game to begin."
                 try:
                     chesscomm.new_game()
                 except RuntimeError:
-                    vocalize("Couldn't start new game.  A game is currently being played.")
+                    return "Couldn't start new game.  A game is currently being played."
                 else:
-                    vocalize("New game started.")
+                    return "What settings would you like?"
+            elif intent == 'New Game Settings':
+                params = response.query_result.parameters
+                if not chesscomm.is_creating_new_game():
+                    return "Cannot change player settings after the game has started."
+                try:
+                    chesscomm.set_player_type(params["ChessSide"], params["PlayerType"])
+                except ValueError:
+                    vocalize("Something went wrong while changing player settings.  Try again?")
+                else:
+                    return "Okay, set {} player to {}.".format(params["ChessSide"], params["PlayerType"])
+            elif intent == 'Finish New Game':
+                params = response.query_result.parameters
+                action = params["AcceptOrCancel"]
+                if action.lower() in {"accept", "done", "start", "finish"}:
+                    try:
+                        chesscomm.start_new_game()
+                    except ValueError:
+                        return "Can't start new game without choosing game settings."
+                    else:
+                        return "Okay, starting new game now."
+                elif action.lower() in {"reject", "cancel"}:
+                    try:
+                        chesscomm.cancel_new_game()
+                    except ValueError:
+                        return "Can't cancel new game.  No new game is currently being created."
+                    else:
+                        return "Okay, the new game is cancelled."
+                else:
+                    assert False
             elif intent == "Default Fallback Intent":
                 vocalize(response.query_result.fulfillment_text)
 
 def main(detector, chesscomm):
-    pyttsx3.init()
     if detector is not None:
 	    detector.terminate()
     print("hotword detected")
+    vocalize("I'm listening!")
     # See http://g.co/cloud/speech/docs/languages
     # for a list of supported languages.
     language_code = 'en-US'  # a BCP-47 language tag
@@ -230,7 +281,9 @@ def main(detector, chesscomm):
                     for content in audio_generator)
         responses = client.streaming_recognize(streaming_config, requests)
         # Now, put the transcription responses to use.
-        listen_print_loop(responses, chesscomm)
+        speech_response = listen_print_loop(responses, chesscomm)
+        vocalize(speech_response)
+        raise RestartSnowboy()
 
 if __name__ == '__main__':
     detector = snowboydecoder.HotwordDetector("resources/Gambit.pmdl", sensitivity=0.5, audio_gain=1)

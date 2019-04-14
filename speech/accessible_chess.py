@@ -17,4 +17,8 @@ def main(comm):
 	thrd.start()
 	snowboy_umdl = os.path.join(os.path.split(os.path.realpath(__file__))[0], "resources/Gambit.pmdl")
 	detector = snowboydecoder.HotwordDetector(snowboy_umdl, sensitivity=0.5, audio_gain=1)
-	detector.start(partial(speech.main, detector, comm))
+	while True:
+		try:
+			detector.start(partial(speech.main, detector, comm))
+		except speech.RestartSnowboy:
+			continue
