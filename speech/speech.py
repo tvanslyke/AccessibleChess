@@ -6,6 +6,7 @@ import snowboydecoder
 import sys
 import uuid
 import json
+import os
 
 class RestartSnowboy(Exception):
 	pass
@@ -101,8 +102,9 @@ class DialogflowClient(object):
 def vocalize(s):
     global ignore_audio
     ignore_audio = True
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "echo.py")
     try:
-        call(["python3", "echo.py", s])
+        call(["python3", path, s])
     finally:
         ignore_audio = False
 
@@ -198,7 +200,7 @@ def listen_print_loop(responses, chesscomm):
             elif intent == 'Move':
                 # don't catch exceptions from these two lines, if this fails we need to fix our code
                 params = response.query_result.parameters
-                movestr = " ".join(params["Space1"], params["Space2"])
+                movestr = " ".join((params["Space1"], params["Space2"]))
                 try:
                     chesscomm.make_move(movestr)
                 except ValueError as e:
