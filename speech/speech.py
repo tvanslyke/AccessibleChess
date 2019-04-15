@@ -313,6 +313,7 @@ def intent_dispatch(chesscomm, response, intent):
             )
     elif intent == "Default Fallback Intent":
         vocalize(response.query_result.fulfillment_text)
+    return None
 
 def main(detector, chesscomm):
     if detector is not None:
