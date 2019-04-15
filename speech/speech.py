@@ -6,15 +6,16 @@ import snowboydecoder
 import sys
 import uuid
 import json
+import os
 
 class RestartSnowboy(Exception):
-	pass
+    pass
 
 try:
-	import pyttsx3
+    import pyttsx3
 except ImportError:
-	print("Couldn't import pyttsx3.  Install with 'python3 -m pip install pyttsx3 --user'.", file=sys.stderr)
-	exit(-1)
+    print("Couldn't import pyttsx3.  Install with 'python3 -m pip install pyttsx3 --user'.", file=sys.stderr)
+    exit(-1)
 
 from functools import partial
 from google.cloud import speech
@@ -23,6 +24,7 @@ from google.cloud.speech import types
 from google.protobuf.json_format import MessageToJson
 from six.moves import queue
 from subprocess import call
+import chess
 
 ignore_audio = False
 
@@ -101,8 +103,10 @@ class DialogflowClient(object):
 def vocalize(s):
     global ignore_audio
     ignore_audio = True
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "echo.py")
     try:
-        call(["python3", "echo.py", s])
+        print("Vocalizing: {}".format(repr(s)))
+        call(["python3", path, s])
     finally:
         ignore_audio = False
 
@@ -174,91 +178,145 @@ def listen_print_loop(responses, chesscomm):
                 response.query_result.parameters))
 
             intent = response.query_result.intent.display_name
-            if chesscomm is None:
-                # should only get here when 'speech.py' is invoked directly
-                print("'chesscomm' is None: skipping")
-                return
-            elif intent == 'Save Game':
-                try:
-                    chesscomm.save_game()
-                except RuntimeError:
-                    return "Couldn't save game.  No game is currently being played."
-                else:
-                    return "Game saved."
-            elif intent == 'Load Game':
-                if not chesscomm.is_creating_new_game():
-                    return "Cannot load game until a new game dialog is started."
-                try:
-                    chesscomm.load_saved_game()
-                except RuntimeError as e:
-                    print(e)
-                    return "Unable to load game."
-                else:
-                    return "Game loaded."
-            elif intent == 'Move':
-                # don't catch exceptions from these two lines, if this fails we need to fix our code
-                params = response.query_result.parameters
-                movestr = " ".join((params["Space1"], params["Space2"]))
-                try:
-                    chesscomm.make_move(movestr)
-                except ValueError as e:
-                    if "No active game" in e.args[0]:
-                        return "Couldn't make move.  No game is currently being played."
-                    else:
-                        return "Requested move is illegal."
-                else:
-                    return "Move made."
-            elif intent == 'Resign':
-                try:
-                    chesscomm.resign_game()
-                except RuntimeError:
-                    return "Couldn't resign game.  No game is currently being played."
-                else:
-                    return "Resigned game."
-            elif intent == 'New Game':
-                if chesscomm.is_creating_new_game():
-                    return "Already creating new game.  Say accept new game or done creating new game to begin."
-                try:
-                    chesscomm.new_game()
-                except RuntimeError:
-                    return "Couldn't start new game.  A game is currently being played."
-                else:
-                    return "What settings would you like?"
-            elif intent == 'New Game Settings':
-                params = response.query_result.parameters
-                if not chesscomm.is_creating_new_game():
-                    return "Cannot change player settings after the game has started."
-                try:
-                    chesscomm.set_player_type(params["ChessSide"], params["PlayerType"])
-                except ValueError:
-                    vocalize("Something went wrong while changing player settings.  Try again?")
-                else:
-                    return "Okay, set {} player to {}.".format(params["ChessSide"], params["PlayerType"])
-            elif intent == 'Finish New Game':
-                params = response.query_result.parameters
-                action = params["AcceptOrCancel"]
-                if action.lower() in {"accept", "done", "start", "finish"}:
-                    try:
-                        chesscomm.start_new_game()
-                    except ValueError:
-                        return "Can't start new game without choosing game settings."
-                    else:
-                        return "Okay, starting new game now."
-                elif action.lower() in {"reject", "cancel"}:
-                    try:
-                        chesscomm.cancel_new_game()
-                    except ValueError:
-                        return "Can't cancel new game.  No new game is currently being created."
-                    else:
-                        return "Okay, the new game is cancelled."
-                else:
-                    assert False
-            elif intent == "Default Fallback Intent":
-                vocalize(response.query_result.fulfillment_text)
+            msg = intent_dispatch(chesscomm, response, intent)
+            if msg is not None:
+                return msg
+
+def intent_dispatch(chesscomm, response, intent): 
+    if chesscomm is None:
+        # should only get here when 'speech.py' is invoked directly
+        print("'chesscomm' is None: skipping")
+        return
+    elif intent == 'Save Game':
+        try:
+            chesscomm.save_game()
+        except RuntimeError:
+            return "Couldn't save game.  No game is currently being played."
+        else:
+            return "Game saved."
+    elif intent == 'Load Game':
+        if not chesscomm.is_creating_new_game():
+            return "Cannot load game until a new game dialog is started."
+        try:
+            chesscomm.load_saved_game()
+        except RuntimeError as e:
+            print(e)
+            return "Unable to load game."
+        else:
+            return "Game loaded."
+    elif intent == 'Move':
+        # don't catch exceptions from these two lines, if this fails we need to fix our code
+        params = response.query_result.parameters
+        movestr = " ".join((params["Space1"].lower(), params["Space2"].lower()))
+        try:
+            chesscomm.make_move(movestr)
+        except ValueError as e:
+            if "No active game" in e.args[0]:
+                return "Couldn't make move.  No game is currently being played."
+            else:
+                return "Requested move is illegal."
+        else:
+            return "Move made."
+    elif intent == 'Resign':
+        try:
+            chesscomm.resign_game()
+        except RuntimeError:
+            return "Couldn't resign game.  No game is currently being played."
+        else:
+            return "Resigned game."
+    elif intent == 'New Game':
+        if chesscomm.is_creating_new_game():
+            return "Already creating new game.  Say accept new game or done creating new game to begin."
+        try:
+            chesscomm.new_game()
+        except RuntimeError:
+            return "Couldn't start new game.  A game is currently being played."
+        else:
+            return "What settings would you like?"
+    elif intent == 'New Game Settings':
+        params = response.query_result.parameters
+        if not chesscomm.is_creating_new_game():
+            return "Cannot change player settings after the game has started."
+        try:
+            chesscomm.set_player_type(params["ChessSide"], params["PlayerType"])
+        except ValueError:
+            vocalize("Something went wrong while changing player settings.  Try again?")
+        else:
+            return "Okay, set {} player to {}.".format(params["ChessSide"], params["PlayerType"])
+    elif intent == 'Finish New Game':
+        params = response.query_result.parameters
+        action = params["AcceptOrCancel"]
+        if action.lower() in {"accept", "done", "start", "finish"}:
+            try:
+                chesscomm.start_new_game()
+            except ValueError:
+                return "Can't start new game without choosing game settings."
+            else:
+                return "Okay, starting new game now."
+        elif action.lower() in {"reject", "cancel"}:
+            try:
+                chesscomm.cancel_new_game()
+            except ValueError:
+                return "Can't cancel new game.  No new game is currently being created."
+            else:
+                return "Okay, the new game is cancelled."
+        else:
+            assert False
+    elif intent == 'Query Attackers':
+        if not chesscomm.active_game():
+            return "No game is currently being played."
+        fen = chesscomm.board_fen()
+        params = response.query_result.parameters
+        pos = params["Space"]
+        attackers = chess.query_attackers(fen, pos)
+        return ".  ".join(
+            ("{} at {}".format(chess.name(piece), chess.indices_to_position(row, col)) for ((row, col), piece) in attackers)
+        ) + "."
+    elif intent == 'Query Material':
+        if not chesscomm.active_game():
+            return "No game is currently being played."
+        fen = chess.DecodedFen(chesscomm.board_fen())
+        material = chess.query_material(fen.board)
+        black_points = 0
+        white_points = 0
+        white_pieces = ""
+        black_pieces = ""
+        for (piece, count) in material.items():
+            if piece.lower() == piece and count:
+                black_points += chess.material_values[piece] * count
+                black_pieces += ", {} {}{}".format(count, chess.name(piece, include_color=False), "s" if count > 1 else "")
+            elif count:
+                white_points += chess.material_values[piece] * count
+                white_pieces += ", {} {}{}".format(count, chess.name(piece, include_color=False), "s" if count > 1 else "")
+        white_pieces = "no pieces" if not white_pieces else white_pieces
+        black_pieces = "no pieces" if not black_pieces else black_pieces
+        return "White has captured {} for a total of {} points and black has captured {} for a total of {} points.".format(
+            black_pieces,
+            black_points,
+            white_pieces,
+            white_points,
+        )
+    elif intent == 'Query Position':
+        if not chesscomm.active_game():
+            return "No game is currently being played."
+        fen = chess.DecodedFen(chesscomm.board_fen())
+        params = response.query_result.parameters
+        pos = params["Space"]
+        piece = chess.query_position(fen.board, pos)
+        if not piece:
+            return "Position {} is empty.".format(pos)
+        else:
+            return "{} {} occupies position {}.".format(
+                "A" if piece not in "KkQq" else "The",
+                chess.name(piece),
+                pos
+            )
+    elif intent == "Default Fallback Intent":
+        vocalize(response.query_result.fulfillment_text)
 
 def main(detector, chesscomm):
     if detector is not None:
-	    detector.terminate()
+        detector.terminate()
     print("hotword detected")
     vocalize("I'm listening!")
     # See http://g.co/cloud/speech/docs/languages
