@@ -182,7 +182,7 @@ def listen_print_loop(responses, chesscomm):
             if msg is not None:
                 return msg
 
-def intent_dispatch(chesscomm, response, intent): 
+def intent_dispatch(chesscomm, response, intent):
     if chesscomm is None:
         # should only get here when 'speech.py' is invoked directly
         print("'chesscomm' is None: skipping")
@@ -207,7 +207,8 @@ def intent_dispatch(chesscomm, response, intent):
     elif intent == 'Move':
         # don't catch exceptions from these two lines, if this fails we need to fix our code
         params = response.query_result.parameters
-        movestr = " ".join((params["Space1"].lower(), params["Space2"].lower()))
+
+        movestr = " ".join([params["Column1"].lower(), params["Row1"].lower(), params["Column2"].lower(), params["Row2"].lower()])
         try:
             chesscomm.make_move(movestr)
         except ValueError as e:
