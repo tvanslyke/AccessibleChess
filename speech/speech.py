@@ -56,6 +56,7 @@ class DialogflowClient(object):
             # This is necessary so that the input device's buffer doesn't
             # overflow while the calling thread makes network requests, etc.
             stream_callback=self._fill_buffer,
+            input_device_index=4
         )
 
         self.closed = False
@@ -180,6 +181,7 @@ def listen_print_loop(responses, chesscomm):
             intent = response.query_result.intent.display_name
             msg = intent_dispatch(chesscomm, response, intent)
             if msg is not None:
+                print("returning {}".format(msg))
                 return msg
 
 def intent_dispatch(chesscomm, response, intent): 
