@@ -1,12 +1,35 @@
 # AccessibleChess
-To build (64 bit):
-`make ARCH=x86-64`
+Required Libraries:
+* Python3
+* cmake
+* Qt
+* Google Cloud SDK command line tools
 
-To build (32 bit):
-`make build ARCH=x86-32`
+Required Python Libraries:
+* dialogflow
+* Snowboy
+* Pyaudio
+* Pyttsx3
+* Pyobjc
+
+To get dialogflow and google speech to text working please request an
+authentication json file from thornton.da@husky.neu.edu
+
+To authenticate with dialogflow and google cloud
+`gcloud auth activate-service-account --key-file <path-to-json-file>`
+
+To build:
+`make`
 
 To run:
-`open cutechess/gui/Cute\ Chess.app`
+`./cutechess/cutechess`
+
+# Commands
+To start a new game you just say “New Game” or “Create Game.”  You can select which side you want to be on by saying “Set White to Human” or “Set White to CPU”. Once you are done you just say “ Done creating new game” or if you wish to cancel the creation of a new game you can say “ Cancel New Game”. Alternatively you can load a previously saved game by saying “Load Game”.
+
+Once you are in a game you have several voice command options. To move a piece you say “move” and then say the square the piece is currently and then the square you wish to move the piece to. For example “Move C1 C2” or “Move A1 A2”. You can also query to voice assistant on the current status of the board. You can query what pieces are currently attacking a specific square on the board by saying “ Attackers for position A2” or just “Attackers A2”. You can query how many pieces have been captured by each side by asking “What is the taken material for each side?” And finally you can query what piece is on a specific square by asking “ What is the piece at A4?”.
+
+At any point during the game you can save the current game or forfeit the game. To save the game you say “Save Game” and to forfeit the game you say “Forfeit Game”.
 
 
 # Embedded Python Interpreter
@@ -22,4 +45,3 @@ Note that Python3 C API was used for all of this; the CPython C API is a lot eas
 
 ## Building Cutechess with the Embedded Python Interpreter
 All of the QT `.pri` and `.pro` files should automatically find the necessary Python libraries on your system.  You'll need the `distutils` python package for it to work (it should be installed by default I think?).  You'll also need to have the Python development libraries installed on your system.  On linux this is usually packaged as libpython3-dev.  Supposedly on Mac and Windows this is packaged with Python itself so it should hopefully "just work".
-
